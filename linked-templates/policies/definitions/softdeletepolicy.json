@@ -1,0 +1,135 @@
+{
+    "properties": {
+        "displayName": "Soft-delete on blob storage account with adls exclusion option",
+        "policyType": "Custom",
+        "mode": "All",
+        "metadata": {
+            "createdBy": "37a67bdc-f4b9-4038-9a29-9949d32a1f98",
+            "createdOn": "2020-10-16T13:39:11.0274209Z",
+            "updatedBy": null,
+            "updatedOn": null
+        },
+        "parameters": {
+            "effect": {
+                "type": "String",
+                "metadata": {
+                    "displayName": "Effect",
+                    "description": "Define the effect of the Policy as Audit or Deny"
+                },
+                "allowedValues": [
+                    "AuditIfNotExists",
+                    "DeployIfNotExists",
+                    "Disabled"
+                ],
+                "defaultValue": "AuditIfNotExists"
+            },
+            "deleteRetentionPolicy.enabled": {
+                "type": "Array",
+                "metadata": {
+                    "displayName": "Blob Storage Soft Delete",
+                    "description": "Determine whether Soft Delete is enabled (true) or not (false)"
+                },
+                "allowedValues": [
+                    true,
+                    false
+                ],
+                "defaultValue": [
+                    true,
+                    false
+                ]
+            },
+            "retentionDays": {
+                "type": "Integer",
+                "metadata": {
+                    "displayName": "The value in days of the retention period",
+                    "description": "Set the number of days that a blob marked for deletion persists until it's permanently deleted"
+                }
+            },
+            "isHnsEnabled": {
+                "type": "Array",
+                "metadata": {
+                    "displayName": "Data Lake Storage Gen2",
+                    "description": "Determine whether this Storage Account has Data Lake Storage Gen2 enabled (true) or disabled (false/null)"
+                },
+                "allowedValues": [
+                    true,
+                    false,
+                    null
+                ],
+                "defaultValue": [
+                    true,
+                    false,
+                    null
+                ]
+            }
+        },
+        "policyRule": {
+            "if": {
+                "allOf": [{
+                        "field": "type",
+                        "equals": "Microsoft.Storage/storageAccounts"
+                    },
+                    {
+                        "field": "Microsoft.Storage/storageAccounts/isHnsEnabled",
+                        "in": "[parameters('isHnsEnabled')]"
+                    }
+                ]
+            },
+            "then": {
+                "effect": "[parameters('effect')]",
+                "details": {
+                    "type": "Microsoft.Storage/storageAccounts/blobServices",
+                    "roleDefinitionIds": [
+                        "/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"
+                    ],
+                    "existenceCondition": {
+                        "field": "Microsoft.Storage/storageAccounts/blobServices/deleteRetentionPolicy.enabled",
+                        "in": "[parameters('deleteRetentionPolicy.enabled')]"
+                    },
+                    "deployment": {
+                        "properties": {
+                            "mode": "incremental",
+                            "parameters": {
+                                "storageAccountName": {
+                                    "value": "[field('name')]"
+                                },
+                                "deleteRetentionPolicy.enabled": {
+                                    "value": "[parameters('deleteRetentionPolicy.enabled')]"
+                                },
+                                "retentionDays": {
+                                    "value": "[parameters('retentionDays')]"
+                                }
+                            },
+                            "template": {
+                                "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+                                "contentVersion": "1.0.0.0",
+                                "parameters": {
+                                    "storageAccountName": {
+                                        "type": "string"
+                                    },
+                                    "deleteRetentionPolicy.enabled": {
+                                        "type": "array"
+                                    },
+                                    "retentionDays": {
+                                        "type": "int"
+                                    }
+                                },
+                                "resources": [{
+                                    "type": "Microsoft.Storage/storageAccounts/blobServices",
+                                    "apiVersion": "2019-06-01",
+                                    "name": "[concat(parameters('storageAccountName'), '/default')]",
+                                    "properties": {
+                                        "deleteRetentionPolicy": {
+                                            "enabled": "[last(parameters('deleteRetentionPolicy.enabled'))]",
+                                            "days": "[parameters('retentionDays')]"
+                                        }
+                                    }
+                                }]
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
